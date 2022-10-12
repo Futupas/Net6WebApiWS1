@@ -1,12 +1,7 @@
 'use strict';
 
 async function main() {
-    const res = await fetch('/data');
-    const json = await res.json();
-    const code = json.wsCode;
-    console.log(`Got code ${code}`);
-
-    const socket = new WebSocket(`wss://${window.location.hostname}:${window.location.port}/ws?code=${code}`);
+    const socket = new WebSocket(`wss://${window.location.hostname}:${window.location.port}/ws`);
 
     socket.onopen = function(e) {
         console.log("[open] Соединение установлено");

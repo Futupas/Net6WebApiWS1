@@ -7,51 +7,35 @@ namespace WSWebApi.Controllers;
 
 public class MainController: ControllerBase
 {
-    private Dictionary<string, (WebSocket socket, Task task, CancellationTokenSource cancellationTokenSource)> sockets {get; set;} = new();
-    private Random random = new();
+    private (WebSocket socket, Task task, CancellationTokenSource cancellationTokenSource) socketData {get; set;} = new();
 
-    [HttpGet("/data")]
-    public async Task<IActionResult> GetData()
+    private async Task ExecuteWsData()
     {
-        var code = DateTime.Now.Ticks.ToString() + "_" + random.NextDouble().ToString().Replace(",", "");
-
-        return Ok(new {
-            foo = "bar",
-            wsCode = code,
-        });
-    }
-
-    private async Task ExecuteWsData(string code)
-    {
-        var wsData = sockets[code];
-        System.Console.WriteLine("this.GetHashCode(): " + this.GetHashCode()); // Always different
-        for (var i = 0; (i < 20 && wsData.socket.State == WebSocketState.Open && !wsData.cancellationTokenSource.IsCancellationRequested); i++)
+        for (var i = 0; (i < 20 && socketData.socket.State == WebSocketState.Open && !socketData.cancellationTokenSource.IsCancellationRequested); i++)
         {
-            var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world, sockets count = " + sockets.Count.ToString())); // Always 1. 
-            await wsData.socket.SendAsync(segments, WebSocketMessageType.Text, true, new());
+            var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world"));
+            await socketData.socket.SendAsync(segments, WebSocketMessageType.Text, true, new());
             await Task.Delay(1000);
         }
 
-        if (wsData.socket.State != WebSocketState.Open || wsData.cancellationTokenSource.IsCancellationRequested)
+        if (socketData.socket.State != WebSocketState.Open || socketData.cancellationTokenSource.IsCancellationRequested)
         {
-            wsData.cancellationTokenSource.Cancel(false);
-            wsData.task.Dispose();
-            sockets.Remove(code); 
+            socketData.cancellationTokenSource.Cancel(false);
+            socketData.task.Dispose();
 
             System.Console.WriteLine("WS was cancelled from out");
             return;
         }
 
-        await wsData.socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new());
-        wsData.cancellationTokenSource.Cancel(false);
-        wsData.task.Dispose();
-        sockets.Remove(code);
-        System.Console.WriteLine($"WS {code} was cancelled");
+        await socketData.socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new());
+        socketData.cancellationTokenSource.Cancel(false);
+        socketData.task.Dispose();
+        System.Console.WriteLine($"WS was cancelled");
     }
 
 
     [HttpGet("/ws")]
-    public async Task GetWs(string code)
+    public async Task GetWs()
     {
         if (!HttpContext.WebSockets.IsWebSocketRequest)
         {
@@ -62,12 +46,11 @@ public class MainController: ControllerBase
         using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
         var cancellationTokenSource = new CancellationTokenSource();
 
-        System.Console.WriteLine($"WS {code} connected");
+        System.Console.WriteLine($"WS connected (HashCode: {this.GetHashCode()})");
 
-        var code2 = code;
-        var task = Task.Run(() => { ExecuteWsData(code2); }, cancellationTokenSource.Token);
+        var task = Task.Run(() => { ExecuteWsData(); }, cancellationTokenSource.Token);
 
-        sockets.Add(code2, (webSocket, task, cancellationTokenSource));
+        socketData = (webSocket, task, cancellationTokenSource);
 
         while (!cancellationTokenSource.Token.IsCancellationRequested && webSocket.State == WebSocketState.Open)
         {
@@ -84,35 +67,6 @@ public class MainController: ControllerBase
             
         }
         
-        System.Console.WriteLine($"WS {code} disconnected");
-
-        return;
-        // if (HttpContext.WebSockets.IsWebSocketRequest)
-        // {
-        //     using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-        //     // using (var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync())
-        //     // {
-        //     //     sockets.Add(code, webSocket);
-        //     //     webSocket.
-        //     // }
-            
-        //     // webSocket.
-        //     // await Echo(webSocket);
-
-            
-            
-            
-        //     // using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-        //     // var socketFinishedTcs = new TaskCompletionSource<object>();
-
-        //     // BackgroundSocketProcessor.AddSocket(webSocket, socketFinishedTcs);
-
-        //     // await socketFinishedTcs.Task;
-
-        // }
-        // else
-        // {
-        //     HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-        // }
+        System.Console.WriteLine($"WS disconnected");
     }
 }
