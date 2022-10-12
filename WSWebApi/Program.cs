@@ -51,6 +51,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
+app.UseWebSockets();
+// app.UseWebSockets(new ()
+// {
+//     KeepAliveInterval = TimeSpan.FromMinutes(2),
+// });
+
 
 app.UseHttpsRedirection();
 
