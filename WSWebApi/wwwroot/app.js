@@ -1,7 +1,8 @@
 'use strict';
 
 async function main() {
-    const socket = new WebSocket(`wss://${window.location.hostname}:${window.location.port}/ws`);
+    const s = window.location.protocol.replace('http', '').replace(':', '');
+    const socket = new WebSocket(`ws${s}://${window.location.hostname}:${window.location.port}/ws`);
 
     socket.onopen = function(e) {
         console.log("[open] Соединение установлено");
