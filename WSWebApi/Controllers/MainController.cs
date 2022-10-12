@@ -8,6 +8,7 @@ namespace WSWebApi.Controllers;
 public class MainController: ControllerBase
 {
     private (WebSocket socket, Task task, CancellationTokenSource cancellationTokenSource) socketData {get; set;} = new();
+    private const int MAX_WS_RECEIVE_BYTES_COUNT = 100;
 
     private async Task ExecuteWsData()
     {
@@ -54,11 +55,13 @@ public class MainController: ControllerBase
 
         while (!cancellationTokenSource.Token.IsCancellationRequested && webSocket.State == WebSocketState.Open)
         {
-            var segments = new ArraySegment<byte>(new byte[100], 0, 100);
+            var segments = new ArraySegment<byte>(new byte[MAX_WS_RECEIVE_BYTES_COUNT], 0, MAX_WS_RECEIVE_BYTES_COUNT);
             var receiveResult = await webSocket.ReceiveAsync(segments, cancellationTokenSource.Token);
+            var receivedMessageCount = receiveResult.Count;
+            var segmentsReal = segments[0..receivedMessageCount];
             if (receiveResult.MessageType == WebSocketMessageType.Text)
             {
-                System.Console.WriteLine("Received webhook: " + Encoding.UTF8.GetString(segments));
+                System.Console.WriteLine("Received webhook: " + Encoding.UTF8.GetString(segmentsReal));
             }
             else
             {
