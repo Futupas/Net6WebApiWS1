@@ -7,13 +7,17 @@ namespace WSWebApi.Controllers;
 
 public class MainController: ControllerBase
 {
-    private Dictionary<string, (WebSocket socket, CancellationTokenSource cancellationTokenSource)> sockets {get; set;} = new();
+    private Dictionary<string, (WebSocket socket, Task task, CancellationTokenSource cancellationTokenSource)> sockets {get; set;} = new();
     private Random random = new();
 
     [HttpGet("/data")]
     public async Task<IActionResult> GetData()
     {
         var code = DateTime.Now.Ticks.ToString() + "_" + random.NextDouble().ToString();
+
+        // new Task(ExecuteWsData(code))
+        // Task.Run(async () => { await ExecuteWsData(code); });
+
         
         return Ok(new {
             foo = "bar",
@@ -24,7 +28,7 @@ public class MainController: ControllerBase
     private async Task ExecuteWsData(string code)
     {
         var wsData = sockets[code];
-        for (var i = 0; i < 1000; i++)
+        for (var i = 0; i < 5; i++)
         {
             var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world"));
             await wsData.socket.SendAsync(segments, WebSocketMessageType.Text, true, new());
@@ -33,6 +37,7 @@ public class MainController: ControllerBase
 
         await wsData.socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new());
         wsData.cancellationTokenSource.Cancel(false);
+        wsData.task.Dispose();
         sockets.Remove(code);
         System.Console.WriteLine($"WS {code} was cancelled");
     }
@@ -51,11 +56,14 @@ public class MainController: ControllerBase
         var cancellationTokenSource = new CancellationTokenSource();
 
         System.Console.WriteLine($"WS {code} connected");
-        this.sockets.Add(code, (webSocket, cancellationTokenSource));
+
+        var task = Task.Run(() => { ExecuteWsData(code); });
+
+        this.sockets.Add(code, (webSocket, task, cancellationTokenSource));
 
         while (!cancellationTokenSource.Token.IsCancellationRequested)
         {
-            var segments = new ArraySegment<byte>();
+            var segments = new ArraySegment<byte>(new byte[100], 0, 100);
             var receiveResult = await webSocket.ReceiveAsync(segments, cancellationTokenSource.Token);
             System.Console.WriteLine("Received webhook: " + Encoding.UTF8.GetString(segments));
         }
