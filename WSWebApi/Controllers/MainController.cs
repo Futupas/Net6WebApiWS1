@@ -28,7 +28,7 @@ public class MainController: ControllerBase
     private async Task ExecuteWsData(string code)
     {
         var wsData = sockets[code];
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; (i < 5 && wsData.socket.State == WebSocketState.Open && !wsData.cancellationTokenSource.IsCancellationRequested); i++)
         {
             var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world"));
             await wsData.socket.SendAsync(segments, WebSocketMessageType.Text, true, new());
@@ -57,7 +57,8 @@ public class MainController: ControllerBase
 
         System.Console.WriteLine($"WS {code} connected");
 
-        var task = Task.Run(() => { ExecuteWsData(code); });
+        var code2 = code;
+        var task = Task.Run(() => { ExecuteWsData(code2); }, cancellationTokenSource.Token);
 
         this.sockets.Add(code, (webSocket, task, cancellationTokenSource));
 
