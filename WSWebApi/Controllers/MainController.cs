@@ -24,9 +24,10 @@ public class MainController: ControllerBase
     private async Task ExecuteWsData(string code)
     {
         var wsData = sockets[code];
-        for (var i = 0; (i < 5 && wsData.socket.State == WebSocketState.Open && !wsData.cancellationTokenSource.IsCancellationRequested); i++)
+        System.Console.WriteLine("this.GetHashCode(): " + this.GetHashCode()); // Always different
+        for (var i = 0; (i < 20 && wsData.socket.State == WebSocketState.Open && !wsData.cancellationTokenSource.IsCancellationRequested); i++)
         {
-            var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world"));
+            var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world, sockets count = " + sockets.Count.ToString())); // Always 1. 
             await wsData.socket.SendAsync(segments, WebSocketMessageType.Text, true, new());
             await Task.Delay(1000);
         }
@@ -66,7 +67,7 @@ public class MainController: ControllerBase
         var code2 = code;
         var task = Task.Run(() => { ExecuteWsData(code2); }, cancellationTokenSource.Token);
 
-        this.sockets.Add(code, (webSocket, task, cancellationTokenSource));
+        sockets.Add(code2, (webSocket, task, cancellationTokenSource));
 
         while (!cancellationTokenSource.Token.IsCancellationRequested && webSocket.State == WebSocketState.Open)
         {
