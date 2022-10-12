@@ -21,14 +21,12 @@ public class MainController: ControllerBase
 
         if (socketData.socket.State != WebSocketState.Open || socketData.cancellationTokenSource.IsCancellationRequested)
         {
-            socketData.cancellationTokenSource.Cancel(false);
-            socketData.task.Dispose();
-
             System.Console.WriteLine("WS was cancelled from out");
-            return;
         }
-
-        await socketData.socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new());
+        else
+        {
+            await socketData.socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new());
+        }
         socketData.cancellationTokenSource.Cancel(false);
         socketData.task.Dispose();
         System.Console.WriteLine($"WS was cancelled");
