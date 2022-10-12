@@ -61,11 +61,19 @@ public class MainController: ControllerBase
 
         this.sockets.Add(code, (webSocket, task, cancellationTokenSource));
 
-        while (!cancellationTokenSource.Token.IsCancellationRequested)
+        while (!cancellationTokenSource.Token.IsCancellationRequested && webSocket.State == WebSocketState.Open)
         {
             var segments = new ArraySegment<byte>(new byte[100], 0, 100);
             var receiveResult = await webSocket.ReceiveAsync(segments, cancellationTokenSource.Token);
-            System.Console.WriteLine("Received webhook: " + Encoding.UTF8.GetString(segments));
+            if (receiveResult.MessageType == WebSocketMessageType.Text)
+            {
+                System.Console.WriteLine("Received webhook: " + Encoding.UTF8.GetString(segments));
+            }
+            else
+            {
+                System.Console.WriteLine("Received webhook message type: " + receiveResult.MessageType);
+            }
+            
         }
         
         System.Console.WriteLine($"WS {code} disconnected");
