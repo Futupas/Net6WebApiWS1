@@ -13,12 +13,8 @@ public class MainController: ControllerBase
     [HttpGet("/data")]
     public async Task<IActionResult> GetData()
     {
-        var code = DateTime.Now.Ticks.ToString() + "_" + random.NextDouble().ToString();
+        var code = DateTime.Now.Ticks.ToString() + "_" + random.NextDouble().ToString().Replace(",", "");
 
-        // new Task(ExecuteWsData(code))
-        // Task.Run(async () => { await ExecuteWsData(code); });
-
-        
         return Ok(new {
             foo = "bar",
             wsCode = code,
@@ -33,6 +29,16 @@ public class MainController: ControllerBase
             var segments = new ArraySegment<byte>(Encoding.UTF8.GetBytes("hello world"));
             await wsData.socket.SendAsync(segments, WebSocketMessageType.Text, true, new());
             await Task.Delay(1000);
+        }
+
+        if (wsData.socket.State != WebSocketState.Open || wsData.cancellationTokenSource.IsCancellationRequested)
+        {
+            wsData.cancellationTokenSource.Cancel(false);
+            wsData.task.Dispose();
+            sockets.Remove(code); 
+
+            System.Console.WriteLine("WS was cancelled from out");
+            return;
         }
 
         await wsData.socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, new());
